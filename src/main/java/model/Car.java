@@ -38,7 +38,7 @@ public class Car extends BaseEntity implements PricedItem, Validatable {
         if (name == null || name.trim().isEmpty()) {
             throw new InvalidInputException("Car name must not be empty.");
         }
-        if (dailyPrice <= 0) {
+        if (!Double.isFinite(dailyPrice) || dailyPrice <= 0) {
             throw new InvalidInputException("dailyPrice must be > 0.");
         }
     }
