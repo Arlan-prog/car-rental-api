@@ -19,12 +19,10 @@ public class RentalService {
     private final CustomerRepository customerRepo = new CustomerRepository();
     private final CarRepository carRepo = new CarRepository();
 
-    // БИЗНЕС-ПРАВИЛО: 1 клиент = 1 активная аренда
     public Rental create(int customerId, int carId, LocalDate startDate, int days)
             throws InvalidInputException, ResourceNotFoundException, DatabaseOperationException {
-
-        if (days <= 0) {
-            throw new InvalidInputException("Days must be > 0.");
+        if (customerId <= 0 || carId <= 0 || startDate == null || days <= 0) {
+            throw new InvalidInputException("Customer, car, start date, and a positive number of days are required.");
         }
 
         Customer customer = customerRepo.getById(customerId);
@@ -36,25 +34,15 @@ public class RentalService {
         if (car == null) {
             throw new ResourceNotFoundException("Car not found.");
         }
-
         if (!car.isAvailable()) {
             throw new InvalidInputException("Car is not available.");
         }
-
         if (rentalRepo.hasActiveRentalForCustomer(customerId)) {
             throw new InvalidInputException("Customer already has an active rental.");
         }
 
-        // создаём аренду
-        Rental rental = rentalRepo.create(
-                new Rental(customer, car, startDate, days)
-        );
-
-        // делаем машину недоступной
-        car.setAvailable(false);
-        carRepo.update(car.getId(), car);
-
-        return rental;
+        // Reserve the car and insert the rental in one database transaction.
+        return rentalRepo.create(new Rental(customer, car, startDate, days));
     }
 
     public List<Rental> getAll() throws DatabaseOperationException {
@@ -63,9 +51,7 @@ public class RentalService {
 
     public void closeRental(int rentalId)
             throws ResourceNotFoundException, DatabaseOperationException {
-
-        boolean closed = rentalRepo.closeRental(rentalId);
-        if (!closed) {
+        if (rentalId <= 0 || !rentalRepo.closeRental(rentalId)) {
             throw new ResourceNotFoundException("Active rental not found.");
         }
     }
